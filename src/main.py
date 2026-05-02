@@ -10,12 +10,14 @@ try:
     from .models import GenreModel, HybridModel, MFModel, PopularityModel
     from .recommend import recommend_for_user
     from .split import per_user_train_test_split
+    from .tuning import tune_svd
 except ImportError:  # Allows running python src/main.py
     from data import filter_sparse_ratings, load_books_csv, load_ratings_csv
     from evaluation import evaluate_model
     from models import GenreModel, HybridModel, MFModel, PopularityModel
     from recommend import recommend_for_user
     from split import per_user_train_test_split
+    from tuning import tune_svd
 
 
 def main():
@@ -70,6 +72,14 @@ def main():
         add_result(name, mf_model, models, results, train_df, test_df, books, args.random_state)
         mf_scores[name] = results[-1]["RMSE"]
 
+    if args.tune:
+        print("\nTuning SVD hyperparameters...")
+        best_params, cv_rmse = tune_svd(train_df)
+        print(f"Best params: {best_params}  (CV RMSE: {cv_rmse:.4f})")
+        tuned_mf = MFModel(**best_params, random_state=args.random_state).fit(train_df, books)
+        add_result("MF-tuned", tuned_mf, models, results, train_df, test_df, books, args.random_state)
+        mf_scores["MF-tuned"] = results[-1]["RMSE"]
+
     best_mf_name = min(mf_scores, key=lambda name: _nan_to_inf(mf_scores[name]))
     best_mf = models[best_mf_name]
 
@@ -111,6 +121,7 @@ def parse_args():
     parser.add_argument("--n_epochs", type=int, default=20)
     parser.add_argument("--lr_all", type=float, default=0.005)
     parser.add_argument("--reg_all", type=float, default=0.02)
+    parser.add_argument("--tune", action="store_true", help="Run SVD hyperparameter grid search.")
     return parser.parse_args()
 
 

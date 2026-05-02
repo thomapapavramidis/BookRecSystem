@@ -27,7 +27,7 @@ def per_user_train_test_split(
             train_parts.append(ordered.iloc[:-n_test])
             test_parts.append(ordered.iloc[-n_test:])
         else:
-            indices = user_rows.index.to_numpy()
+            indices = user_rows.index.to_numpy().copy()
             rng.shuffle(indices)
             test_idx = set(indices[:n_test])
             test_parts.append(user_rows.loc[list(test_idx)])

@@ -8,18 +8,16 @@ Recommender systems are widely used in platforms like Amazon and Netflix to sugg
 
 ### Prerequisites
 
-- Python 3.8–3.12 (`scikit-surprise` does not support Python 3.13+, so please use 3.12 if on a newer version)
-- pip
+- [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 
-### Step 1 — Install dependencies
+### Step 1 — Create and activate the environment
 
 ```bash
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate book_rec_env
 ```
 
-The three required packages are `pandas`, `numpy`, and `scikit-surprise`.
-
-On some Macs you may need to use `pip3` and `python3` instead of `pip` and `python`.
+This installs Python 3.12 and all required packages (`pandas`, `numpy`, `scikit-surprise`) automatically.
 
 ### Step 2 — Run the full pipeline
 

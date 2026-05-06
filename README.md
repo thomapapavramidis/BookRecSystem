@@ -109,16 +109,22 @@ BookRecSystem/
   README.md
   requirements.txt
   src/
-    data.py
-    split.py
-    models.py
-    evaluation.py
-    recommend.py
-    tuning.py
-    main.py
+    main.py               — full pipeline: load, train, evaluate, recommend
+    data.py               — data loading, cleaning, and sparse filtering
+    split.py              — per-user train/test split
+    models.py             — PopularityModel, GenreModel, MFModel, HybridModel
+    evaluation.py         — RMSE, MAE, HitRate, Precision, Recall, NDCG
+    recommend.py          — top-k recommendation generation
+    tuning.py             — SVD hyperparameter grid search
+    prepare_data.py       — merges raw CSVs into books_with_genres.csv
+    user_rating_counts.py — utility to compute per-user rating counts
   data/
-    ratings.csv
-    books_with_genres.csv
+    ratings.csv           — user-book ratings (required)
+    books_with_genres.csv — book metadata with genre tags (used by genre/hybrid models)
+    books.csv             — raw book metadata
+    book_tags.csv         — raw book-to-tag mappings
+    tags.csv              — raw tag definitions
+    user_rating_counts.csv — precomputed user rating counts
 ```
 
 ## How to Run

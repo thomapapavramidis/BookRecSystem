@@ -40,7 +40,7 @@ class PopularityModel:
         # Save score as dictionary
         self.book_scores = stats["score"].to_dict()
 
-        # Save set of all books trained on
+        # Save set of all books
         self.all_book_ids = set(train["book_id"])
         if books_df is not None:
             self.all_book_ids.update(books_df["book_id"].map(_as_id))
@@ -68,7 +68,7 @@ class GenreModel:
         self.book_genres = self._build_book_genres(books_df)
         self.has_genres = any(len(genres) > 0 for genres in self.book_genres.values())
 
-        # Save set of all books trained on
+        # Save set of all books
         self.all_book_ids = set(train["book_id"])
         if books_df is not None:
             self.all_book_ids.update(books_df["book_id"].map(_as_id))
@@ -166,7 +166,7 @@ class MFModel:
         train["book_id"] = train["book_id"].map(_as_id)
         self.global_mean = float(train["rating"].mean()) if len(train) else 3.0
 
-        # Save set of all books trained on
+        # Save set of all books
         self.all_book_ids = set(train["book_id"])
         if books_df is not None:
             self.all_book_ids.update(books_df["book_id"].map(_as_id))

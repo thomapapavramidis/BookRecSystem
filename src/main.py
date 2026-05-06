@@ -1,3 +1,5 @@
+# Main program to build and train models
+
 import argparse
 from pathlib import Path
 
@@ -19,13 +21,15 @@ except ImportError:  # Allows running python src/main.py
     from split import per_user_train_test_split
     from tuning import tune_svd
 
-
 def main():
+    # Handle command-line input
     args = parse_args()
 
+    # Load data
     ratings = load_ratings_csv(args.ratings_path)
     books = load_books(args.books_path)
 
+    # Filter out sparse data points
     ratings = filter_sparse_ratings(
         ratings,
         min_user_ratings=args.min_user_ratings,
@@ -34,6 +38,7 @@ def main():
     if ratings.empty:
         raise ValueError("No ratings remain after sparse user/book filtering.")
 
+    # Make training and testing split
     train_df, test_df = per_user_train_test_split(
         ratings,
         test_size=args.test_size,
@@ -47,9 +52,11 @@ def main():
     models = {}
     results = []
 
+    # Create and fit PopularityModel instance
     popularity = PopularityModel(smoothing=args.popularity_smoothing).fit(train_df, books)
     add_result("Popularity", popularity, models, results, train_df, test_df, books, args.random_state)
 
+    # Create and fit GenreModel instance
     genre_model = None
     if has_genre_metadata(books):
         genre_model = GenreModel().fit(train_df, books)
@@ -57,6 +64,7 @@ def main():
     else:
         print("Skipping genre and hybrid models because usable genre metadata was not provided.")
 
+    # Create and fit MFModel instances with different feature dimension sizes
     mf_scores = {}
     for n_factors in [20, 50, 100]:
         name = f"MF-{n_factors}"
@@ -72,6 +80,7 @@ def main():
         add_result(name, mf_model, models, results, train_df, test_df, books, args.random_state)
         mf_scores[name] = results[-1]["RMSE"]
 
+    # Create and fit MFModel instance with optimal tuned parameters
     if args.tune:
         print("\nTuning SVD hyperparameters...")
         best_params, cv_rmse = tune_svd(train_df)
@@ -80,9 +89,11 @@ def main():
         add_result("MF-tuned", tuned_mf, models, results, train_df, test_df, books, args.random_state)
         mf_scores["MF-tuned"] = results[-1]["RMSE"]
 
+    # Select lowest-loss MFModel instance
     best_mf_name = min(mf_scores, key=lambda name: _nan_to_inf(mf_scores[name]))
     best_mf = models[best_mf_name]
 
+    # Create and fit HybridModel instances using GenreModel instance and lowest-loss MFModel at different values of alpha
     if genre_model is not None:
         for alpha in [0.6, 0.7, 0.8, 0.9]:
             name = f"Hybrid-{alpha:.1f}"
@@ -93,6 +104,7 @@ def main():
     print("\nResults")
     print(format_results(results_df))
 
+    # Select highest-performing model and provide example recommendations
     best_model_name = pick_best_model(results_df)
     print(f"\nExample recommendations using {best_model_name}")
     for user_id in train_df["user_id"].drop_duplicates().head(3):
@@ -107,7 +119,7 @@ def main():
         )
         print(recs.to_string(index=False))
 
-
+# Handles command-line input of files and hyperparameters using parser
 def parse_args():
     parser = argparse.ArgumentParser(description="Run book recommendation experiments.")
     parser.add_argument("--ratings_path", required=True, help="Path to ratings CSV.")
@@ -124,7 +136,7 @@ def parse_args():
     parser.add_argument("--tune", action="store_true", help="Run SVD hyperparameter grid search.")
     return parser.parse_args()
 
-
+# Load books with metadata from file
 def load_books(path):
     if not path:
         return None
@@ -136,13 +148,13 @@ def load_books(path):
 
     return load_books_csv(path)
 
-
+# Indicate whether book metadata includes genres
 def has_genre_metadata(books):
     if books is None or "genres_list" not in books.columns:
         return False
     return books["genres_list"].map(len).sum() > 0
 
-
+# Get evaluation metrics for given model and append to results list
 def add_result(name, model, models, results, train_df, test_df, books, random_state):
     print(f"Evaluating {name}...")
     models[name] = model
@@ -150,7 +162,7 @@ def add_result(name, model, models, results, train_df, test_df, books, random_st
     row.update(evaluate_model(model, train_df, test_df, books_df=books, random_state=random_state))
     results.append(row)
 
-
+# Output training results and evaluation metrics for models
 def format_results(results_df):
     metric_cols = ["RMSE", "MAE", "HitRate@10", "Precision@10", "Recall@10", "NDCG@10"]
     ordered_cols = ["Model"] + metric_cols
@@ -159,14 +171,14 @@ def format_results(results_df):
         formatted[col] = formatted[col].map(lambda value: "nan" if pd.isna(value) else f"{value:.4f}")
     return formatted.to_string(index=False)
 
-
+# Chooses model with lowest RMSE
 def pick_best_model(results_df):
     usable = results_df.dropna(subset=["RMSE"])
     if usable.empty:
         return results_df.iloc[0]["Model"]
     return usable.sort_values("RMSE").iloc[0]["Model"]
 
-
+# Replaces NaN with infinity to facilitate finding minimum values
 def _nan_to_inf(value):
     return np.inf if pd.isna(value) else value
 

@@ -4,12 +4,68 @@ This project builds a book recommendation system using machine learning. The goa
 
 Recommender systems are widely used in platforms like Amazon and Netflix to suggest items based on user behavior. We implement and compare several approaches, from simple baselines to more advanced models.
 
+## How to Run
+
+### Prerequisites
+
+- Python 3.8–3.12 (`scikit-surprise` does not support Python 3.13+)
+- pip
+
+### Step 1 — Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+The three required packages are `pandas`, `numpy`, and `scikit-surprise`.
+
+### Step 2 — Run the full pipeline
+
+```bash
+python src/main.py --ratings_path data/ratings.csv --books_path data/books_with_genres.csv
+```
+
+This single command will:
+1. Load and preprocess the data
+2. Filter out users and books with fewer than 5 ratings
+3. Split each user's ratings 80% train / 20% test
+4. Train all models: Popularity, Genre, MF-20, MF-50, MF-100, and Hybrid variants
+5. Evaluate every model on the held-out test set
+6. Print a results table with RMSE, MAE, HitRate@10, Precision@10, Recall@10, and NDCG@10
+7. Print example top-10 recommendations for three users using the best model
+
+Note: `books_with_genres.csv` must be used (not `books.csv`) because it contains the genre column needed for the Genre and Hybrid models.
+
+### Step 3 — (Optional) Run with hyperparameter tuning
+
+```bash
+python src/main.py --ratings_path data/ratings.csv --books_path data/books_with_genres.csv --tune
+```
+
+Adding `--tune` runs a grid search over SVD hyperparameters and includes a tuned MF model in the comparison. This takes longer to run.
+
+### All available arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--ratings_path` | required | Path to ratings CSV |
+| `--books_path` | required | Path to book metadata CSV with genres |
+| `--min_user_ratings` | 5 | Minimum ratings a user must have to be included |
+| `--min_book_ratings` | 5 | Minimum ratings a book must have to be included |
+| `--test_size` | 0.2 | Fraction of each user's ratings held out for testing |
+| `--random_state` | 42 | Random seed for reproducibility |
+| `--top_k` | 10 | Number of recommendations to generate per user |
+| `--n_epochs` | 20 | Training epochs for matrix factorization |
+| `--lr_all` | 0.005 | Learning rate for matrix factorization |
+| `--reg_all` | 0.02 | L2 regularization for matrix factorization |
+| `--tune` | False | Run SVD hyperparameter grid search |
+
 ## Problem Definition
 
 Given:
 
 - A dataset of user-book ratings
-- Optional book metadata (genres, author, etc.)
+- Book metadata with genre tags
 
 We want to:
 
@@ -18,7 +74,7 @@ We want to:
 
 ## Dataset Format
 
-Ratings dataset (required):
+Ratings dataset:
 
 | user_id | book_id | rating |
 | --- | --- | --- |
@@ -27,11 +83,13 @@ Ratings dataset (required):
 
 Ratings are between 1 and 5.
 
-Book metadata (optional):
+Book metadata:
 
 | book_id | title | author | genres |
 | --- | --- | --- | --- |
 | 101 | ... | ... | fantasy, adventure |
+
+A books CSV with a genres column is required to run the Genre and Hybrid models. The provided `books_with_genres.csv` already has genres populated — it was generated from the raw `books.csv`, `book_tags.csv`, and `tags.csv` files using `src/prepare_data.py`.
 
 ## Approach
 
@@ -120,69 +178,12 @@ BookRecSystem/
     user_rating_counts.py — utility to compute per-user rating counts
   data/
     ratings.csv           — user-book ratings (required)
-    books_with_genres.csv — book metadata with genre tags (used by genre/hybrid models)
+    books_with_genres.csv — book metadata with genre tags (required)
     books.csv             — raw book metadata
     book_tags.csv         — raw book-to-tag mappings
     tags.csv              — raw tag definitions
     user_rating_counts.csv — precomputed user rating counts
 ```
-
-## How to Run
-
-### Prerequisites
-
-- Python 3.8 or higher
-- pip
-
-### Step 1 — Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-The three required packages are `pandas`, `numpy`, and `scikit-surprise`.
-
-### Step 2 — Run the full pipeline
-
-```bash
-python src/main.py --ratings_path data/ratings.csv --books_path data/books_with_genres.csv
-```
-
-This single command will:
-1. Load and preprocess the data
-2. Filter out users and books with fewer than 5 ratings
-3. Split each user's ratings 80% train / 20% test
-4. Train all models: Popularity, Genre, MF-20, MF-50, MF-100, and Hybrid variants
-5. Evaluate every model on the held-out test set
-6. Print a results table with RMSE, MAE, HitRate@10, Precision@10, Recall@10, and NDCG@10
-7. Print example top-10 recommendations for three users using the best model
-
-Note: `books_with_genres.csv` is required (not `books.csv`) because it contains the genre column needed for the Genre and Hybrid models.
-
-### Step 3 — (Optional) Run with hyperparameter tuning
-
-```bash
-python src/main.py --ratings_path data/ratings.csv --books_path data/books_with_genres.csv --tune
-```
-
-Adding `--tune` runs a grid search over SVD hyperparameters and includes a tuned MF model in the comparison. This takes longer to run.
-
-### All available arguments
-
-
-| Argument | Default | Description |
-|---|---|---|
-| `--ratings_path` | required | Path to ratings CSV |
-| `--books_path` | None | Path to book metadata CSV (enables Genre and Hybrid models) |
-| `--min_user_ratings` | 5 | Minimum ratings a user must have to be included |
-| `--min_book_ratings` | 5 | Minimum ratings a book must have to be included |
-| `--test_size` | 0.2 | Fraction of each user's ratings held out for testing |
-| `--random_state` | 42 | Random seed for reproducibility |
-| `--top_k` | 10 | Number of recommendations to generate per user |
-| `--n_epochs` | 20 | Training epochs for matrix factorization |
-| `--lr_all` | 0.005 | Learning rate for matrix factorization |
-| `--reg_all` | 0.02 | L2 regularization for matrix factorization |
-| `--tune` | False | Run SVD hyperparameter grid search |
 
 ## Key Ideas
 

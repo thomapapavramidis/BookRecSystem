@@ -1,0 +1,4 @@
+conda activate
+conda create -f requirements.yml -p ./book_rec_env
+conda activate ./book_rec_env
+python src/main.py --ratings_path data/ratings.csv --books_path data/books_with_genres.csv --tune

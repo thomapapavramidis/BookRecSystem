@@ -7,15 +7,15 @@ try:
 except ImportError:  # Allows running python src/main.py
     from data import parse_genres
 
-
+# Make sure we only output valid ratings between 1 and 5 inclusive
 def clamp_rating(value):
     return float(np.clip(value, 1.0, 5.0))
 
-
+# Extracts value as string
 def _as_id(value):
     return str(value).strip()
 
-
+# Scores books based on Bayesian average, provides baseline performance with no user personalization
 class PopularityModel:
     def __init__(self, smoothing=10):
         self.smoothing = smoothing
@@ -23,13 +23,15 @@ class PopularityModel:
     def fit(self, train_df, books_df=None):
         train = train_df.copy()
         train["book_id"] = train["book_id"].map(_as_id)
-        self.global_mean = float(train["rating"].mean()) if len(train) else 3.0
 
+        # Calculate Bayesian average to minimize impact of outliers
+        self.global_mean = float(train["rating"].mean()) if len(train) else 3.0
         stats = train.groupby("book_id")["rating"].agg(["mean", "count"])
         m = self.smoothing
         stats["score"] = (stats["count"] / (stats["count"] + m)) * stats["mean"]
         stats["score"] += (m / (stats["count"] + m)) * self.global_mean
 
+        # Save score as dictionary
         self.book_scores = stats["score"].to_dict()
         self.all_book_ids = set(train["book_id"])
         if books_df is not None:
@@ -37,13 +39,15 @@ class PopularityModel:
         self.all_book_ids = sorted(self.all_book_ids)
         return self
 
+    # Return score for given user and book (no personalization in this model, all users share same scores)
     def predict(self, user_id, book_id):
         return clamp_rating(self.book_scores.get(_as_id(book_id), self.global_mean))
 
+    # Get predictions for a given user and a list of books
     def score_items(self, user_id, book_ids):
         return np.array([self.predict(user_id, book_id) for book_id in book_ids])
 
-
+# Makes personalized book enjoyment predictions by calculating how much a user enjoys the genres in a given book
 class GenreModel:
     def fit(self, train_df, books_df=None):
         train = train_df.copy()
@@ -59,21 +63,26 @@ class GenreModel:
             self.all_book_ids.update(books_df["book_id"].map(_as_id))
         self.all_book_ids = sorted(self.all_book_ids)
 
+        # Create nested dictionaries to hold values to be computed
         sums = defaultdict(lambda: defaultdict(float))
         counts = defaultdict(lambda: defaultdict(int))
 
+        # Calculate how highly users rate and how many times users rate books of each genre
         for row in train.itertuples(index=False):
+            # Get user, book, and genres for current row
             user = _as_id(row.user_id)
             book = _as_id(row.book_id)
             genres = self.book_genres.get(book, [])
             if not genres:
                 continue
 
+            # Calculate difference from mean rating and increment count for that genre 
             deviation = float(row.rating) - self.user_means[user]
             for genre in genres:
                 sums[user][genre] += deviation
                 counts[user][genre] += 1
 
+        # Calculate scores using average rating above mean
         self.user_genre_scores = {}
         for user, genre_sums in sums.items():
             self.user_genre_scores[user] = {
@@ -83,10 +92,12 @@ class GenreModel:
 
         return self
 
+    # Returns dictionary with book_ids as keys and genre lists as values
     def _build_book_genres(self, books_df):
         if books_df is None:
             return {}
 
+        # Pull list of genres from each book and store in dictionary
         book_genres = {}
         for row in books_df.itertuples(index=False):
             book_id = _as_id(row.book_id)
@@ -99,23 +110,27 @@ class GenreModel:
             book_genres[book_id] = genres
         return book_genres
 
+    # Return score for a given user and book by seeing how much the user enjoys the genres of the book
     def predict(self, user_id, book_id):
         user = _as_id(user_id)
         book = _as_id(book_id)
         base = self.user_means.get(user, self.global_mean)
 
+        # Select user's average rating above mean for every genre the book has
         user_scores = self.user_genre_scores.get(user, {})
         genres = self.book_genres.get(book, [])
         matching_scores = [user_scores[genre] for genre in genres if genre in user_scores]
-
+        
+        # Average the average rating above mean for selected genres and add to user's mean rating
         if matching_scores:
             base += float(np.mean(matching_scores))
         return clamp_rating(base)
 
+    # Get predictions for a given user and a list of books
     def score_items(self, user_id, book_ids):
         return np.array([self.predict(user_id, book_id) for book_id in book_ids])
 
-
+# 
 class MFModel:
     def __init__(
         self,

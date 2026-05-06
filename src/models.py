@@ -1,3 +1,9 @@
+# Model definitions
+# 1. PopularityModel is our baseline test which uses average ratings to make non-personalized enjoyment predictions
+# 2. GenreModel uses user genre preferences and book genre info to make personalized predictions; no machine learning necessary
+# 3. MFModel implements matrix factorization via machine learning to make personalized predictions off of latent features
+# 4. Hybrid model combines the performance of GenreModel and MFModel to optimize accuracy
+
 from collections import defaultdict
 
 import numpy as np

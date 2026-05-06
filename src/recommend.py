@@ -5,7 +5,6 @@ import pandas as pd
 # Gives k book recommendations for user_id using model_name, considering all books in train_df and books_df
 # Returns recommendation dataframe with book_id, title, author, genres, and predicted_score columns
 def recommend_for_user(user_id, model_name, top_k=10, *, models, train_df, books_df=None):
-    """Return top-k recommendations for one user from a fitted model dictionary."""
     if model_name not in models:
         raise ValueError(f"Unknown model '{model_name}'. Available models: {list(models)}")
 

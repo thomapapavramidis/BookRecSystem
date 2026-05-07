@@ -60,6 +60,14 @@ Adding `--tune` runs a grid search over SVD hyperparameters and includes a tuned
 | `--reg_all` | 0.02 | L2 regularization for matrix factorization |
 | `--tune` | False | Run SVD hyperparameter grid search |
 
+### Inspecting a single user
+
+To see rating history and genre preferences for one user:
+
+```bash
+python src/user_info.py --user_id 1
+```
+
 ## Problem Definition
 
 Given:
@@ -176,6 +184,7 @@ BookRecSystem/
     tuning.py             — SVD hyperparameter grid search
     prepare_data.py       — merges raw CSVs into books_with_genres.csv
     user_rating_counts.py — utility to compute per-user rating counts
+    user_info.py          — shows rating history and genre preferences for a single user
   data/
     ratings.csv           — user-book ratings (required)
     books_with_genres.csv — book metadata with genre tags (required)
